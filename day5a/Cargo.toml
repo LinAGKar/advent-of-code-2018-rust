@@ -1,0 +1,7 @@
+[package]
+name = "day5a"
+version = "0.1.0"
+authors = ["Linus <Kardell>"]
+edition = "2018"
+
+[dependencies]
