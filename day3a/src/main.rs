@@ -1,68 +1,65 @@
-extern crate regex;
-
 use regex::Regex;
 use std::cmp;
-use std::collections::HashSet;
-use std::i32;
-use std::io;
-use std::io::Read;
+use std::io::{Read,stdin};
 
-
-#[derive(PartialEq, Eq, Hash)]
-struct Claim {
-    x: i32,
-    y: i32,
-    x2: i32,
-    y2: i32,
+struct Rect {
+    x: usize,
+    y: usize,
+    x2: usize,
+    y2: usize,
 }
 
-impl Claim {
-    fn new(x: i32, y: i32, w: i32, h: i32) -> Claim {
-        Claim {
+impl Rect {
+    fn new(x: usize, y: usize, w: usize, h: usize) -> Rect {
+        Rect {
             x: x,
             y: y,
             x2: x + w,
             y2: y + h,
         }
     }
-
-    fn contains(&self, x: i32, y: i32) -> bool {
-        self.x <= x && x < self.x2 && self.y <= y && y < self.y2
-    }
 }
 
 fn main() {
     let mut input = String::new();
     let re = Regex::new(r"(?m)^#\d+ @ (\d+),(\d+): (\d+)x(\d+)$").unwrap();
-    io::stdin().read_to_string(&mut input).unwrap();
-    let mut claims = HashSet::new();
-    let mut left = i32::MAX;
-    let mut top = i32::MAX;
-    let mut right = i32::MIN;
-    let mut bottom = i32::MIN;
+    stdin().read_to_string(&mut input).unwrap();
+    let mut claims = Vec::new();
+    let mut left = usize::MAX;
+    let mut top = usize::MAX;
+    let mut right = 0;
+    let mut bottom = 0;
     for i in re.captures_iter(&input) {
-        let claim = Claim::new(i[1].parse().unwrap(), i[2].parse().unwrap(), i[3].parse().unwrap(), i[4].parse().unwrap());
+        let claim = Rect::new(i[1].parse().unwrap(), i[2].parse().unwrap(), i[3].parse().unwrap(), i[4].parse().unwrap());
         left = cmp::min(left, claim.x);
         top = cmp::min(top, claim.y);
         right = cmp::max(right, claim.x2);
         bottom = cmp::max(bottom, claim.y2);
-        claims.insert(claim);
+        claims.push(claim);
     }
-    let mut covered_by_multiple = 0u32;
-    for x in left..right {
-        for y in top..bottom {
-            let mut covered = false;
-            for claim in &claims {
-                if claim.contains(x, y) {
-                    if covered {
-                        covered_by_multiple += 1;
-                        break;
-                    } else {
-                        covered = true;
-                    }
-                }
-            }
+
+    let mut map = vec![vec![false; bottom - top]; right - left];
+
+    println!("{}", claims.iter().enumerate().flat_map(|(n, i)| {
+        claims.iter().enumerate().filter(move |&(m, _)| m != n).map(move |(_, j)| (i, j))
+    }).map(|(i, j)| {
+        if i.x < j.x2 && j.x < i.x2 && i.y < j.y2 && j.y < i.y2 {
+            let intersect = Rect {
+                x: cmp::max(i.x, j.x),
+                x2: cmp::min(i.x2, j.x2),
+                y: cmp::max(i.y, j.y),
+                y2: cmp::min(i.y2, j.y2),
+            };
+            (intersect.x..intersect.x2)
+                .flat_map(|x| (intersect.y..intersect.y2).map(move |y| (x, y)))
+                .filter(|(x, y)| {
+                    let new = !map[x - left][y - top];
+                    map[x - left][y - top] = true;
+                    new
+                })
+                .count()
+        } else {
+            0
         }
-    }
-    println!("{}", covered_by_multiple);
+    }).sum::<usize>());
 }
